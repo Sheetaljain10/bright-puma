@@ -4,43 +4,49 @@ pipeline {
     stages {
         stage('Build') {
             steps {
-                script {
-                    echo "Building application..."
-                    sh 'pip install -r requirements.txt'
-                }
+                echo 'Creating virtual environment and installing dependencies...'
             }
         }
-
         stage('Test') {
             steps {
-                script {
-                    echo "Running tests..."
-                    sh 'pytest'  // If using PyTest for unit testing
-                }
+                echo 'Running tests...'
+                sh 'python3 -m unittest discover -s .'
             }
         }
-
         stage('Deploy') {
             steps {
-                script {
-                    echo "Deploying application..."
-                    sh 'python app.py &'
-                }
+                echo 'Deploying application...'
+                sh '''
+                mkdir -p ${WORKSPACE}/python-app-deploy
+                cp ${WORKSPACE}/app.py ${WORKSPACE}/python-app-deploy/
+                '''
             }
         }
-
-        stage('Run') {
+        stage('Run Application') {
             steps {
-                script {
-                    echo "Application is running on port 5000"
-                }
+                echo 'Running application...'
+                sh '''
+                nohup python3 ${WORKSPACE}/python-app-deploy/app.py > ${WORKSPACE}/python-app-deploy/app.log 2>&1 &
+                echo $! > ${WORKSPACE}/python-app-deploy/app.pid
+                '''
+            }
+        }
+        stage('Test Application') {
+            steps {
+                echo 'Testing application...'
+                sh '''
+                python3 ${WORKSPACE}/test_app.py
+                '''
             }
         }
     }
 
     post {
-        always {
-            echo "Pipeline execution completed"
+        success {
+            echo 'Pipeline completed successfully!'
+        }
+        failure {
+            echo 'Pipeline failed. Check the logs for more details.'
         }
     }
 }
